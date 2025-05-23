@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Моніторинг IoT-мережі</title>
+	<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding: 2rem; background-color: #f9f9f9; }
+        .attack { background-color: #f8d7da; }
+        .normal { background-color: #d1e7dd; }
+        .table th, .table td { vertical-align: middle; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="mb-4">🔍 Моніторинг IoT-з'єднань</h2>
+
+        <button class="btn btn-primary mb-3" onclick="window.location.href='/download_report'">
+            📥 Завантажити звіт про загрози
+        </button>
+
+        <table class="table table-bordered table-hover" id="traffic-table">
+            <thead class="table-light">
+                <tr>
+                    <th>Протокол</th>
+                    <th>Порт</th>
+                    <th>Payload (B/s)</th>
+                    <th>Статус</th>
+                    <th>Рівень ризику</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Початково таблиця порожня -->
+            </tbody>
+        </table>
+
+        <p class="text-muted">Потік даних моделюється у реальному часі — по одному підключенню кожні кілька секунд.</p>
+    </div>
+
+    <script>
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B/s';
+            const k = 1024;
+            const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s'];
+            const i = Math.floor(Math.log(Math.abs(bytes)) / Math.log(k));
+            const val = bytes / Math.pow(k, i);
+            return val.toFixed(2) + ' ' + sizes[i];
+        }
+
+        const attackAudio = new Audio('/static/kurwa_alarm.mp3');
+
+        function addRandomRow() {
+            fetch('/api/data')
+                .then(res => res.json())
+                .then(data => {
+                    const row = document.createElement('tr');
+                    row.className = data["Статус"] === "Атака" ? 'attack' : 'normal';
+                    row.innerHTML = `
+                        <td>${data["Протокол"]}</td>
+                        <td>${data["Порт"]}</td>
+                        <td>${formatBytes(data["Payload (B/s)"])}</td>
+                        <td><strong>${data["Статус"]}</strong></td>
+                        <td>${data["Рівень ризику"]}</td>
+                    `;
+                    const tableBody = document.querySelector("#traffic-table tbody");
+                    tableBody.insertBefore(row, tableBody.firstChild);
+                    if (tableBody.rows.length > 100) {
+                        tableBody.deleteRow(-1);
+                    }
+                    if (data["Статус"] === "Атака") {
+                        attackAudio.currentTime = 0;
+                        attackAudio.play().catch(() => {});
+                    }
+                })
+                .finally(() => {
+                    const delay = Math.floor(Math.random() * 1000) + 500;
+                    setTimeout(addRandomRow, delay);
+                });
+        }
+        setTimeout(addRandomRow, Math.floor(Math.random() * 1000) + 500);
+    </script>
+</body>
+</html>
+
+
